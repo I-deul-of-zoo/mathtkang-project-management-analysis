@@ -63,3 +63,27 @@ class TeamInvitation(APIView):
             {"detail": "Invitation sent successfully."}, 
             status=status.HTTP_200_OK
         )
+
+
+class TeamInvitationAcceptance(APIView):
+    '''
+    팀원 초대 승락 API
+    '''
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, team_id, *args, **kwargs):
+        team = Team.objects.get(id=team_id)
+
+        # 초대를 받은 유저만 승락 가능
+        if request.user not in team.invited_members.all():
+            return Response(
+                {"detail": "You are not invited to this team."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        team.members.add(request.user)
+        team.invited_members.remove(request.user)
+        return Response(
+            {"detail": "Invitation accepted. You are now a member of the team."}, 
+            status=status.HTTP_200_OK
+        )
