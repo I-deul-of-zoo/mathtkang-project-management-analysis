@@ -52,3 +52,56 @@ class ColumnView(APIView):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+
+class ColumnDetailsView(APIView):
+    '''
+    URL: /kanbans/columns/<int:col_id>
+    '''
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, col_id):
+        '''
+        Column 수정 API
+        '''
+        user = request.user
+        team = Team.objects.get(members=user)
+        column = Column.objects.get(id=col_id)
+
+        if column.team != team:
+            return Response(
+                {"detail": "You do not have permission to update this column."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+    def delete(self, request, col_id):
+        '''
+        Column 삭제 API
+        '''
+        user = request.user
+        team = Team.objects.get(members=user)
+        column = Column.objects.get(id=col_id)
+
+        if column.team != team:
+            return Response(
+                {"detail": "You do not have permission to delete this column."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        ticket_count = column.ticket_set.count()  # 역참조 이용
+        if ticket_count > 0:
+            tickets = column.ticket_set.all()
+            ticket_data = [{"id": ticket.id, "title": ticket.title} for ticket in tickets]
+
+            return Response(
+                {
+                    "detail": "Column cannot be deleted as it contains tickets.",
+                    "ticket_count": ticket_count,
+                    "tickets": ticket_data,
+                }, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        column.delete()
+        return Response(
+            {"detail": "Column deleted successfully."}, 
+            status=status.HTTP_200_OK
+        )
