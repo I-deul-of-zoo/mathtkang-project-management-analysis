@@ -228,3 +228,62 @@ class TicketDetailsView(APIView):
             status=status.HTTP_200_OK
         )
 
+
+class ReorderTicketsView(APIView):
+    '''
+    URL: /kanbans/columns/<int:col_id>/tickets/orders
+    '''
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, column_id):
+        '''
+        Ticket 간의 위치 변경 및 Ticket을 포함한 Column을 변경 API
+        '''
+        column = Column.objects.get(id=column_id)
+
+        if request.user not in column.team.members.all():
+            return Response(
+                {"detail": "You do not have permission to reorder tickets in this column."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        new_order = request.data.get("order", None)
+        if not new_order:
+            return Response(
+                {"detail": "Order parameter is required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        tickets = Ticket.objects.filter(column=column).order_by("order")
+        if len(new_order) != tickets.count():
+            return Response(
+                {"detail": "Invalid order parameter."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # for tic_id, new_order in zip([tic.id for tic in tickets], new_order):
+        #     ticket = Ticket.objects.get(id=tic_id)
+        #     ticket.order = new_order
+        #     ticket.save()
+
+        for order, tic_id in enumerate(new_order, start=1):
+            ticket = Ticket.objects.get(id=tic_id)
+            ticket.order = order
+            ticket.save()
+
+        return Response(
+            {"detail": "Tickets reordered successfully."}, 
+            status=status.HTTP_200_OK
+        )
+
+
+def reorder_tickets(category_id, order):
+    '''
+    이 함수는 주어진 카테고리 ID에 속하는 티켓을 가져와서 order를 기준으로 정렬한 후, 
+    새로운 순서에 맞게 업데이트합니다. 각 티켓의 순서는 order 변수와 현재 순서를 기반으로 새롭게 설정됩니다.
+    '''
+    tickets_to_reorder = Ticket.objects.filter(column__id=category_id).order_by('order')
+
+    for index, ticket in enumerate(tickets_to_reorder):
+        ticket.order = order + index  # Update the order based on the new order
+        ticket.save()
