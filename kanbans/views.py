@@ -105,3 +105,41 @@ class ColumnDetailsView(APIView):
             {"detail": "Column deleted successfully."}, 
             status=status.HTTP_200_OK
         )
+
+
+class ReorderColumnsView(APIView):
+    '''
+    URL: /kanbans/columns/order
+    '''
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        '''
+        Column 순서 변경 API
+        '''
+        user = request.user
+        team = Team.objects.get(members=user)
+        order = request.data.get('order')
+
+        if not order:
+            return Response(
+                {"detail": "Order parameter is required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        columns = Column.objects.filter(team=team).order_by('order')
+        if len(order) != columns.count():
+            return Response(
+                {"detail": "Invalid order parameter."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        for col_id, new_order in zip([col.id for col in columns], order):
+            column = Column.objects.get(id=col_id)
+            column.order = new_order
+            column.save()
+
+        return Response(
+            {"detail": "Columns reordered successfully."}, 
+            status=status.HTTP_200_OK
+        )
