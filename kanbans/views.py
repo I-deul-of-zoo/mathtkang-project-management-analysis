@@ -176,3 +176,55 @@ class TicketsView(APIView):
             serializer.errors, 
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+class TicketDetailsView(APIView):
+    '''
+    URL: /kanbans/columns/<int:col_id>/tickets/<int:tic_id>
+    '''
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, column_id, tic_id):
+        '''
+        Ticket 수정 API
+        '''
+        ticket = Ticket.objects.get(id=tic_id)
+        column = ticket.column
+
+        if request.user not in column.team.members.all():
+            return Response(
+                {"detail": "You do not have permission to update this ticket."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = TicketSerializer(ticket, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                serializer.data, 
+                status=status.HTTP_200_OK
+            )
+        return Response(
+            serializer.errors, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    def delete(self, request, column_id, tic_id):
+        '''
+        Ticket 삭제 API
+        '''
+        ticket = Ticket.objects.get(id=tic_id)
+        column = ticket.column
+
+        if request.user not in column.team.members.all():
+            return Response(
+                {"detail": "You do not have permission to delete this ticket."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        ticket.delete()
+        return Response(
+            {"detail": "Ticket deleted successfully."}, 
+            status=status.HTTP_200_OK
+        )
+
