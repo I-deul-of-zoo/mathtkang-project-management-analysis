@@ -1,7 +1,13 @@
 from rest_framework import serializers
-from kanbans.models import Column
+from kanbans.models import Column, Ticket
 
 class ColumnSerializer(serializers.ModelSerializer):
     class Meta:
         model = Column
-        fields = ['id', 'name', 'order', 'team']
+        fields = "__all__"
+
+
+class TicketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ticket
+        fields = "__all__"
