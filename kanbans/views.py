@@ -4,11 +4,12 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from teams.models import Team
 from auths.models import User
-from kanbans.models import Column
-from kanbans.serializers import ColumnSerializer
+from kanbans.models import Column, Ticket
+from kanbans.serializers import ColumnSerializer, TicketSerializer
 
+# TODO: 권한설정 커스텀하기(팀원, 팀장, 일반유저)
 
-class ColumnView(APIView):
+class ColumnsView(APIView):
     '''
     URL: /kanbans/columns
     '''
@@ -17,6 +18,7 @@ class ColumnView(APIView):
     def get(self, request):
         '''
         Column 전체 조회 API
+        TODO: ticket 목록도 함께 조회: `column` 내부에는 속한 `ticket` 목록을 같이 반환합니다.
         '''
         user = request.user
         team = Team.objects.get(members=user)
@@ -109,7 +111,7 @@ class ColumnDetailsView(APIView):
 
 class ReorderColumnsView(APIView):
     '''
-    URL: /kanbans/columns/order
+    URL: /kanbans/columns/orders
     '''
     permission_classes = [IsAuthenticated]
 
@@ -142,4 +144,35 @@ class ReorderColumnsView(APIView):
         return Response(
             {"detail": "Columns reordered successfully."}, 
             status=status.HTTP_200_OK
+        )
+
+
+class TicketsView(APIView):
+    '''
+    URL: /kanbans/columns/<int:col_id>/tickets
+    '''
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, column_id):
+        '''
+        Ticket 생성 API
+        '''
+        column = Column.objects.get(id=column_id)
+
+        if request.user not in column.team.members.all():
+            return Response(
+                {"detail": "You do not have permission to create a ticket in this column."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = TicketSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(column=column)
+            return Response(
+                serializer.data, 
+                status=status.HTTP_201_CREATED
+            )
+        return Response(
+            serializer.errors, 
+            status=status.HTTP_400_BAD_REQUEST
         )
