@@ -261,14 +261,16 @@ class ReorderTicketsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # for tic_id, new_order in zip([tic.id for tic in tickets], new_order):
-        #     ticket = Ticket.objects.get(id=tic_id)
-        #     ticket.order = new_order
-        #     ticket.save()
+        new_order_mapping = {tic_id: order for order, tic_id in enumerate(new_order, start=1)}
 
-        for order, tic_id in enumerate(new_order, start=1):
-            ticket = Ticket.objects.get(id=tic_id)
-            ticket.order = order
+        for ticket in tickets:
+            if ticket.column != column:
+                return Response(
+                    {"detail": "Invalid ticket/column association."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            ticket.order = new_order_mapping[ticket.id]
             ticket.save()
 
         return Response(
@@ -284,6 +286,6 @@ def reorder_tickets(category_id, order):
     '''
     tickets_to_reorder = Ticket.objects.filter(column__id=category_id).order_by('order')
 
-    for index, ticket in enumerate(tickets_to_reorder):
-        ticket.order = order + index  # Update the order based on the new order
+    for order, ticket in enumerate(tickets_to_reorder, start=1):
+        ticket.order = order
         ticket.save()
